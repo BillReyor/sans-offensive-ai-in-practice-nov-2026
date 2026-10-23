@@ -1,5 +1,4 @@
 # Juice Shop pentest configuration — workshop demo tuning
-# Critical path budget: pre-recon + recon + slowest(vuln+exploit) + report ≤ 35 min
 # Strategy: narrow focus aggressively, starve every agent's hypothesis set.
 
 authentication:
@@ -19,8 +18,7 @@ authentication:
 rules:
   focus:
     # Keep focus tight — each focus rule pulls agent attention toward it.
-    # Five focus rules is already a lot; I'd cut REST-generally since it
-    # re-widens what the specific rules narrowed.
+    # Four specific paths produces the core demo findings without re-widening.
     - description: "Login endpoint - SQLi auth bypass (the demo money shot)"
       type: path
       url_path: "/rest/user/login"
@@ -35,7 +33,7 @@ rules:
       url_path: "/b2b/v2/orders"
 
   avoid:
-    # --- NEW: Auth/authz noise that burned 26 min last run ---
+    # --- Auth/authz rabbit holes ---
     - description: "Password reset flow - slow email-dependent exploit chains"
       type: path
       url_path: "/rest/user/reset-password"
@@ -55,7 +53,7 @@ rules:
       type: path
       url_path: "/rest/user/change-password"
 
-    # --- NEW: Additional XSS sinks the agent tends to discover ---
+    # --- XSS sinks the agent tends to explore ---
     - description: "Complaint form - stored XSS vector"
       type: path
       url_path: "/#/complain"
@@ -69,7 +67,7 @@ rules:
       type: path
       url_path: "/rest/chatbot/*"
 
-    # --- NEW: Explicit HTTP method restrictions (auth-exploit burns cycles on these) ---
+    # --- HTTP method restrictions ---
     - description: "Skip OPTIONS preflight testing"
       type: method
       url_path: "OPTIONS"
@@ -77,7 +75,7 @@ rules:
       type: method
       url_path: "HEAD"
 
-    # --- From your existing config (unchanged) ---
+    # --- Frontend routes (XSS hypothesis starving) ---
     - description: "Angular search route"
       type: path
       url_path: "/#/search"
@@ -90,6 +88,8 @@ rules:
     - description: "Profile page - also starves SSRF hypotheses"
       type: path
       url_path: "/profile"
+
+    # --- Static assets ---
     - description: "Angular bundles"
       type: path
       url_path: "/main.js"
@@ -102,6 +102,8 @@ rules:
     - description: "Public images"
       type: path
       url_path: "/assets/public/*"
+
+    # --- Noise endpoints ---
     - description: "FTP honeypot"
       type: path
       url_path: "/ftp/*"
@@ -126,7 +128,3 @@ rules:
     - description: "Static HTML shell"
       type: path
       url_path: "/index.html"
-
-pipeline:
-  max_concurrent_pipelines: 5
-  retry_preset: default

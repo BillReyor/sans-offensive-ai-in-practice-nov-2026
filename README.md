@@ -1,5 +1,40 @@
-# SANS: Workshop:  Offensive AI in Practice - Hands on Exploitation of Vulnerable Applications Using Open Source Pentest Tool
+# SANS: Workshop: Offensive AI in Practice - Hands on Exploitation of Vulnerable Applications Using Open Source Pentest Tool
 ## November 2026
+
+---
+
+## 🚀 Quick Reference
+
+**First time setup:**
+```bash
+cd sans-offensive-ai-in-practice-nov-2026/workshop-bundle
+./setup.sh                    # Run automated setup
+# Edit .env and add your ANTHROPIC_API_KEY
+docker compose up -d          # Start all services
+./verify-setup.sh             # Verify everything is working
+```
+
+**Run tools:**
+```bash
+# ZAP baseline scan (~5 minutes)
+docker compose run --rm zap-baseline
+
+# Shannon pentest (check README for full command)
+docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \
+  http://juice-shop:3000 /app/repos/juice-shop \
+  --task-queue shannon --config /app/configs/juice-shop.yaml
+
+# PentestGPT interactive session
+docker compose exec -it pentestgpt bash
+pentestgpt --target juice-shop:3000
+```
+
+**Monitor:**
+- Juice Shop: http://localhost:3000
+- Temporal UI: http://localhost:8233
+- Reports: `workshop-bundle/out/` and `workshop-bundle/workspace/juice-shop/.shannon/deliverables/`
+
+---
 
 ## Directory Map
 
@@ -49,17 +84,44 @@ git clone git@github.com:rpigu-i/sans-offensive-ai-in-practice-nov-2026.git
 ```
 - Install Docker and Docker Compose. This can be found at: https://www.docker.com/products/docker-desktop/
 - Anthropic API key available from: https://platform.claude.com/
-- Shannon should be installed into `workshop-bundle/tools/shannon/` - clone the repository at: https://github.com/KeygraphHQ/shannon
-- PentestGPT should be installed into `workshop-bundle/tools/PentestGPT` - clone the repository at: https://github.com/greydgl/pentestgpt
-- After cloning this repository create a new folder called `tools/` in the `workshop-bundle` directory
+
+---
+
+## Quick Start (Automated Setup)
+
+We've provided a setup script that automates the entire installation process:
 
 ```bash
-#From within /sans-offensive-ai-in-practice-nov-2026/workshop-bundle
-git clone https://github.com/KeygraphHQ/shannon tools/shannon
-git clone https://github.com/greydgl/pentestgpt tools/PentestGPT
+cd sans-offensive-ai-in-practice-nov-2026/workshop-bundle
+./setup.sh
 ```
 
-## Initial Setup
+The setup script will:
+1. Create the tools directory structure
+2. Clone Shannon and PentestGPT repositories
+3. Copy the necessary Dockerfiles
+4. Set up the Shannon configuration
+5. Clone the Juice Shop source code for analysis
+6. Create workspace and output directories
+
+After running the setup script:
+1. Edit `.env` and add your ANTHROPIC_API_KEY
+2. Start all services: `docker compose up -d`
+3. Wait for services to be healthy: `docker compose ps`
+4. Verify setup: `./verify-setup.sh`
+5. Follow the instructions below to run ZAP, Shannon, or PentestGPT
+
+**Note:** The repository includes a `.gitignore` file that prevents accidentally committing:
+- API keys (`.env` files)
+- Cloned tool repositories (`tools/`)
+- Workspace files (`workspace/`)
+- Scan outputs and reports (`out/`)
+
+---
+
+## Manual Setup (Alternative)
+
+If you prefer to set up manually or want to understand each step:
 
 ### 1. Set up your API key
 ```bash
@@ -68,144 +130,45 @@ cp .env.example .env
 # Edit .env and add your ANTHROPIC_API_KEY
 ```
 
-### 2. Create the Shannon configuration file
+### 2. Clone the tools
 
-Create `tools/shannon/configs/juice-shop.yaml` with the following content. This configuration pre-authenticates Shannon, focuses it on the highest-value attack surface, and excludes noise endpoints to keep the scan within the workshop time window.
-
-```yaml
-# Juice Shop pentest configuration — workshop demo tuning
-# Strategy: narrow focus aggressively, starve every agent's hypothesis set.
-
-authentication:
-  login_type: form
-  login_url: "http://juice-shop:3000/#/login"
-  credentials:
-    username: "admin@juice-sh.op"
-    password: "admin123"
-  login_flow:
-    - "Type $username into the email field"
-    - "Type $password into the password field"
-    - "Click the 'Log in' button"
-  success_condition:
-    type: url_contains
-    value: "/search"
-
-rules:
-  focus:
-    # Keep focus tight — each focus rule pulls agent attention toward it.
-    # Four specific paths produces the core demo findings without re-widening.
-    - description: "Login endpoint - SQLi auth bypass (the demo money shot)"
-      type: url_path
-      value: "/rest/user/login"
-    - description: "User registration - mass assignment privilege escalation"
-      type: url_path
-      value: "/api/Users"
-    - description: "Basket - IDOR"
-      type: url_path
-      value: "/rest/basket/*"
-    - description: "B2B order - SSTI"
-      type: url_path
-      value: "/b2b/v2/orders"
-
-  avoid:
-    # --- Auth/authz rabbit holes ---
-    - description: "Password reset flow - slow email-dependent exploit chains"
-      type: url_path
-      value: "/rest/user/reset-password"
-    - description: "Security questions - dead-end auth vector"
-      type: url_path
-      value: "/rest/user/security-question"
-    - description: "2FA endpoints - out of scope for demo"
-      type: url_path
-      value: "/rest/2fa/*"
-    - description: "OAuth/SSO - slow third-party redirect chains"
-      type: url_path
-      value: "/rest/saveLoginIp"
-    - description: "Data export - auth exploit agent rabbit hole"
-      type: url_path
-      value: "/rest/user/data-export"
-    - description: "Change password - overlaps with auth bypass demo"
-      type: url_path
-      value: "/rest/user/change-password"
-
-    # --- XSS sinks the agent tends to explore ---
-    - description: "Complaint form - stored XSS vector"
-      type: url_path
-      value: "/#/complain"
-    - description: "Contact form"
-      type: url_path
-      value: "/#/contact"
-    - description: "Feedback page"
-      type: url_path
-      value: "/#/contact/feedback"
-    - description: "Chatbot - SSRF/XSS hybrid surface"
-      type: url_path
-      value: "/rest/chatbot/*"
-
-    # --- HTTP method restrictions ---
-    - description: "Skip OPTIONS preflight testing"
-      type: method
-      value: "OPTIONS"
-    - description: "Skip HEAD requests"
-      type: method
-      value: "HEAD"
-
-    # --- Frontend routes (XSS hypothesis starving) ---
-    - description: "Angular search route"
-      type: url_path
-      value: "/#/search"
-    - description: "Track orders page"
-      type: url_path
-      value: "/#/track-result"
-    - description: "Product pages"
-      type: url_path
-      value: "/#/product"
-    - description: "Profile page - also starves SSRF hypotheses"
-      type: url_path
-      value: "/profile"
-
-    # --- Static assets ---
-    - description: "Angular bundles"
-      type: url_path
-      value: "/main.js"
-    - description: "Runtime/vendor bundles"
-      type: url_path
-      value: "/runtime.js"
-    - description: "i18n translations"
-      type: url_path
-      value: "/assets/i18n/*"
-    - description: "Public images"
-      type: url_path
-      value: "/assets/public/*"
-
-    # --- Noise endpoints ---
-    - description: "FTP honeypot"
-      type: url_path
-      value: "/ftp/*"
-    - description: "Challenge snippets"
-      type: url_path
-      value: "/snippets/*"
-    - description: "Continue-code challenge tracker"
-      type: url_path
-      value: "/rest/continue-code*"
-    - description: "Captcha endpoints"
-      type: url_path
-      value: "/rest/captcha*"
-    - description: "Logout - prevents session kills mid-test"
-      type: url_path
-      value: "/rest/user/logout"
-    - description: "Metrics"
-      type: url_path
-      value: "/metrics"
-    - description: "Swagger/API docs - read-only, no exploit surface"
-      type: url_path
-      value: "/api-docs"
-    - description: "Static HTML shell"
-      type: url_path
-      value: "/index.html"
+```bash
+# From within /sans-offensive-ai-in-practice-nov-2026/workshop-bundle
+mkdir -p tools
+git clone https://github.com/KeygraphHQ/shannon tools/shannon
+git clone https://github.com/greydgl/pentestgpt tools/PentestGPT
 ```
 
-### 3. Start all services
+### 3. Copy Dockerfiles to the tool directories
+
+```bash
+cp dockerfiles/shannon.Dockerfile tools/shannon/Dockerfile
+cp dockerfiles/pentestgpt.Dockerfile tools/PentestGPT/Dockerfile
+```
+
+### 4. Set up Shannon configuration
+
+The Shannon configuration file is already included in the repository at the root as `juice-shop.yaml`. The setup script copies it to the correct location, or you can do it manually:
+
+```bash
+mkdir -p tools/shannon/configs
+cp ../juice-shop.yaml tools/shannon/configs/juice-shop.yaml
+```
+
+This configuration pre-authenticates Shannon, focuses it on the highest-value attack surface, and excludes noise endpoints to keep the scan within the workshop time window. See `juice-shop.yaml` in the repository root for the full configuration.
+
+### 5. Clone Juice Shop source for Shannon analysis
+
+```bash
+# From inside workshop-bundle/
+git clone https://github.com/juice-shop/juice-shop.git workspace/juice-shop
+cd workspace/juice-shop
+git config user.email "pentest@localhost"
+git config user.name "Pentest Agent"
+cd ../..
+```
+
+### 6. Start all services
 
 ```bash
 docker compose up -d
@@ -319,8 +282,15 @@ The pentest runs through 5 phases:
 
 ### Resetting the Workspace Between Runs
 
-Shannon writes intermediate findings to `.shannon/deliverables/` inside the target repo. If you run Shannon a second time without clearing this state, the new run will ingest the previous run's output and its analysis will degrade. Before each fresh run:
+Shannon writes intermediate findings to `.shannon/deliverables/` inside the target repo. If you run Shannon a second time without clearing this state, the new run will ingest the previous run's output and its analysis will degrade.
 
+**Easy way (using reset script):**
+```bash
+# From inside workshop-bundle/
+./reset-workspace.sh
+```
+
+**Manual way:**
 ```bash
 # From inside workshop-bundle/
 cd workspace/juice-shop
