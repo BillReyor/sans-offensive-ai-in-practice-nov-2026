@@ -1,6 +1,6 @@
 services:
   juice-shop:
-    image: bkimminich/juice-shop:latest
+    image: bkimminich/juice-shop:v20.3.0  # keep in sync with JUICE_SHOP_REF in setup.sh
     container_name: juice-shop
     ports:
       - "3000:3000"
@@ -97,6 +97,10 @@ services:
       - CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
       - TEMPORAL_ADDRESS=shannon-temporal:7233
       - SHANNON_MAX_TURNS=50
+      # Linux/WSL2 only (set by setup.sh): run as the host user so Shannon can
+      # write to the bind-mounted workspace/ and out/ folders.
+      - SHANNON_HOST_UID=${SHANNON_HOST_UID:-}
+      - SHANNON_HOST_GID=${SHANNON_HOST_GID:-}
     depends_on:
       juice-shop:
         condition: service_healthy

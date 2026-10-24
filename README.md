@@ -11,18 +11,20 @@ cd sans-offensive-ai-in-practice-nov-2026/workshop-bundle
 ./setup.sh                    # Run automated setup
 # Edit .env and add your ANTHROPIC_API_KEY
 docker compose up -d          # Start all services
-./verify-setup.sh             # Verify everything is working
+./verify-setup.sh             # Verify everything is working, including your API key
 ```
+
+> **Before the workshop:** run all of the above at home and make sure `./verify-setup.sh` reports no errors. It makes one live model call with your Anthropic API key (a few cents, no scan) to confirm the key works and passes Shannon's security-access check.
 
 **Run tools:**
 ```bash
 # ZAP baseline scan (~5 minutes)
 docker compose run --rm zap-baseline
 
-# Shannon pentest (check README for full command)
+# Shannon workshop run: analysis only, two endpoints (see "Workshop Lite Run" below)
 docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \
   http://juice-shop:3000 /app/repos/juice-shop \
-  --task-queue shannon --config /app/configs/juice-shop.yaml
+  --task-queue shannon --config /app/configs/juice-shop-lite.yaml
 
 # PentestGPT interactive session
 docker compose exec -it pentestgpt bash
@@ -84,6 +86,50 @@ git clone git@github.com:rpigu-i/sans-offensive-ai-in-practice-nov-2026.git
 ```
 - Install Docker and Docker Compose. This can be found at: https://www.docker.com/products/docker-desktop/
 - Anthropic API key available from: https://platform.claude.com/
+
+---
+
+## Run in GitHub Codespaces (no local Docker needed)
+
+If you can't install Docker on your laptop (for example a locked-down corporate Windows machine), run the whole lab in a GitHub Codespace. You only need a browser and a GitHub account.
+
+1. **Add your API key as a Codespaces secret** before you create the codespace: github.com → your profile → **Settings → Codespaces → Secrets → New secret**. Name it `ANTHROPIC_API_KEY`, paste your key, and give this repository access to it. Don't put the key in a file in the repository.
+2. **Create the codespace:** on the repository page, click **Code → Codespaces → Create codespace on main**. Choose a machine with at least **4 cores** if asked.
+3. **Wait for setup.** The first start clones the tools and builds the Docker images, which takes several minutes. You can watch progress in the terminal. When it finishes, the lab services start automatically.
+4. **Check it:** in the codespace terminal, run:
+   ```bash
+   cd workshop-bundle
+   ./verify-setup.sh
+   ```
+5. **Run the tools** with the commands in the rest of this README, from `workshop-bundle/` in the codespace terminal. Open the **Ports** tab to reach Juice Shop (3000) and the Temporal UI (8233) in your browser.
+
+**Cost:** personal GitHub accounts include 120 core-hours of Codespaces a month for free, about 30 hours on a 4-core machine. **Stop the codespace when you're not using it**, and delete it after the workshop.
+
+Try this at least a few days before the workshop, on the network you'll use: some corporate networks block Codespaces.
+
+---
+
+## Windows Participants
+
+The easiest option on Windows is GitHub Codespaces (above). To run the lab locally instead, note that all of the setup scripts and commands in this README are bash, and the tool containers are Linux. On Windows, run everything **inside WSL2** (recommended):
+
+1. Install Docker Desktop with the WSL2 backend, and turn on integration for your Ubuntu distribution (Docker Desktop → Settings → Resources → WSL integration).
+2. Open an **Ubuntu (WSL) terminal** and clone this repository into your Linux home folder (`cd ~`), **not** under `/mnt/c/...`. Files on the Windows drive are slow to share with containers, are scanned by endpoint security, and can end up with Windows line endings.
+3. Run `./setup.sh` and the rest of the Quick Start from that terminal. On Linux and WSL2, `setup.sh` records your user ID in `.env` so Shannon can write its findings to your folders.
+
+**If you must use Git Bash instead of WSL2:**
+- Before cloning anything, run `git config --global core.autocrlf input`. Git for Windows otherwise converts files to Windows (CRLF) line endings, and the scripts and containers fail with errors like `$'\r': command not found` or `/usr/bin/env: 'bash\r': No such file or directory`.
+- Put `MSYS_NO_PATHCONV=1` in front of the Shannon `docker compose run` commands. Without it, Git Bash rewrites `/app/repos/...` into a Windows path.
+- Don't use PowerShell or Command Prompt: the multi-line commands use bash `\` line continuations.
+
+**Corporate laptops: check these with IT before the workshop.**
+- **Docker Desktop:** it must be allowed and licensed (larger companies need a paid Docker subscription), with virtualization and WSL2 enabled.
+- **Resources:** at least 8 GB of memory available to Docker, and about 20 GB of free disk space.
+- **Network:** containers need outbound access to `api.anthropic.com`, Docker Hub, GitHub, npm, PyPI and the Ubuntu package mirrors. A proxy that inspects TLS traffic breaks the image builds and the API calls.
+- **Endpoint security:** it may flag or quarantine ZAP, nmap, or the deliberately vulnerable Juice Shop source. Ask for an exception, or use a non-corporate machine.
+- **Ports:** 3000, 7233 and 8233 must be free.
+
+Run `./setup.sh`, `docker compose up -d` and `./verify-setup.sh` on the same laptop **and the same network** you'll use at the workshop, at least a few days beforehand.
 
 ---
 
@@ -230,9 +276,26 @@ The `git config` lines set a local committer identity for this repo only — Sha
 
 > ⚠️ **Do not skip cloning the actual source.** Pointing Shannon at an empty repo causes its pre-recon agents to spin for hundreds of turns looking for code that isn't there, and can lead them to fall back on stale deliverables from previous runs — producing hallucinated findings instead of real ones.
 
-### Start the Pentest
+### Workshop Lite Run (use this in the workshop)
 
-Run the pentest workflow from `workshop-bundle/`:
+Each participant runs Shannon on their own Anthropic API key, so the workshop uses a smaller configuration, `juice-shop-lite.yaml`:
+
+- `exploit: "false"`: runs recon and vulnerability analysis, and skips the exploitation phase
+- Focuses on two endpoints only: `/rest/user/login` and `/api/Users`
+
+```bash
+docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \
+  http://juice-shop:3000 \
+  /app/repos/juice-shop \
+  --task-queue shannon \
+  --config /app/configs/juice-shop-lite.yaml
+```
+
+If a live run fails, use the complete set of Shannon results in `example_deliverables/` to follow along.
+
+### Start the Pentest (full run)
+
+The full configuration runs every phase, including exploitation. It takes much longer and costs much more per run than the lite configuration. Run it from `workshop-bundle/`:
 
 ```bash
 docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \

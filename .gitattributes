@@ -1,0 +1,4 @@
+# Keep LF line endings on every platform. Git for Windows converts text files
+# to CRLF by default, which breaks bash scripts and container entrypoints.
+* text=auto eol=lf
+*.png binary
