@@ -15,6 +15,8 @@ docker compose up -d          # Start all services
 ```
 
 > **Before the workshop:** run all of the above at home and make sure `./verify-setup.sh` reports no errors. It makes one live model call with your Anthropic API key (a few cents, no scan) to confirm the key works and passes Shannon's security-access check.
+>
+> **API credit:** load at least **$25 of credit** on your Anthropic account, and make sure any spend limit on your organization or workspace allows it. One lite Shannon run costs roughly $15–20 (see "Workshop Lite Run"). When credit runs out mid-scan, every Shannon agent fails at once with a non-retryable error. `verify-setup.sh` can't detect low credit.
 
 **Run tools:**
 ```bash
@@ -26,9 +28,9 @@ docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js 
   http://juice-shop:3000 /app/repos/juice-shop \
   --task-queue shannon --config /app/configs/juice-shop-lite.yaml
 
-# PentestGPT interactive session
+# PentestGPT session (plain text output; --no-telemetry turns off data sent to Langfuse)
 docker compose exec -it pentestgpt bash
-pentestgpt --target juice-shop:3000
+pentestgpt --target juice-shop:3000 --no-telemetry
 ```
 
 **Monitor:**
@@ -283,6 +285,17 @@ Each participant runs Shannon on their own Anthropic API key, so the workshop us
 - `exploit: "false"`: runs recon and vulnerability analysis, and skips the exploitation phase
 - Focuses on two endpoints only: `/rest/user/login` and `/api/Users`
 
+**Time and cost: expect about an hour and $15–20 per run.** The focus rules don't shorten the first two phases, which analyze the whole Juice Shop codebase. In a test run in October 2026 (Shannon `4bd88c1`, `claude-sonnet-4-6`):
+
+| Phase | Time |
+|---|---|
+| Login check | 2 min |
+| Pre-Recon | 17 min |
+| Recon | 16 min |
+| Vulnerability analysis (5 agents in parallel) | not measured; the run was stopped 4 minutes in |
+
+By the time the run was stopped it had taken 40 minutes and cost **$12.06**. The full-run timings and the $15–20 total are estimates. Start the scan early in the session and work on other material while it runs.
+
 ```bash
 docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \
   http://juice-shop:3000 \
@@ -295,7 +308,7 @@ If a live run fails, use the complete set of Shannon results in `example_deliver
 
 ### Start the Pentest (full run)
 
-The full configuration runs every phase, including exploitation. It takes much longer and costs much more per run than the lite configuration. Run it from `workshop-bundle/`:
+The full configuration runs every phase, including exploitation. It takes longer and costs more than the lite configuration: a test run had spent about $28 before the account ran out of credit partway through exploitation. Run it from `workshop-bundle/`:
 
 ```bash
 docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \
@@ -366,7 +379,7 @@ cd ../..
 
 ---
 
-## Run PentestGPT (Interactive)
+## Run PentestGPT
 
 PentestGPT is already included in `tools/PentestGPT/`. The container starts automatically with `docker compose up -d`.
 
@@ -385,26 +398,34 @@ You'll be in the `/workspace` directory where you can start pentesting.
 Point it at Juice Shop:
 
 ```bash
-pentestgpt --target juice-shop:3000
+pentestgpt --target juice-shop:3000 --no-telemetry
 ```
 
 Or with specific instructions:
 
 ```bash
-pentestgpt --target juice-shop:3000 --instruction "Focus on authentication bypass vulnerabilities"
+pentestgpt --target juice-shop:3000 --no-telemetry --instruction "Focus on authentication bypass vulnerabilities"
 ```
+
+> **Telemetry:** PentestGPT sends usage data to Langfuse (`us.cloud.langfuse.com`) unless you pass `--no-telemetry`. Every command in this README includes it.
 
 ### Common Options
 
 ```bash
-pentestgpt --target juice-shop:3000              # Interactive TUI mode
-pentestgpt --target juice-shop:3000 --mode pentest  # Breadth-first vuln identification (default mode is ctf)
-pentestgpt --target juice-shop:3000 -v           # Verbose output
-pentestgpt --list-sessions                       # List previous sessions
-pentestgpt --resume --session-id <id>            # Resume a session
+pentestgpt --target juice-shop:3000 --no-telemetry                # Default mode (ctf: depth-first exploitation)
+pentestgpt --target juice-shop:3000 --no-telemetry --mode pentest  # Breadth-first vulnerability identification
+pentestgpt --target juice-shop:3000 --no-telemetry -v              # Verbose output
+pentestgpt --list-sessions                                         # List previous sessions
+pentestgpt --target juice-shop:3000 --no-telemetry --resume --session-id <id>  # Resume a session
 ```
 
-PentestGPT will guide you through an interactive penetration testing session with a TUI interface.
+PentestGPT prints its progress as plain text: each stage (for example `[Stage 1/3] Asset Identification`), followed by every tool it runs (`[TOOL] Bash: ...`). It runs Claude Code inside the container with permission prompts turned off, so the commands it chooses run straight away. The container is the safety boundary.
+
+To stop it, press **Ctrl+C**. If anything is still running afterwards, restart the container:
+
+```bash
+docker compose restart pentestgpt
+```
 
 ### If You Get "ENOENT: no such file or directory, uv_cwd" Error
 

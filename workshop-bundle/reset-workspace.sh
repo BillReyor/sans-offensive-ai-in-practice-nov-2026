@@ -66,5 +66,5 @@ echo "  docker compose run --rm shannon-worker node apps/worker/dist/temporal/wo
 echo "    http://juice-shop:3000 \\"
 echo "    /app/repos/juice-shop \\"
 echo "    --task-queue shannon \\"
-echo "    --config /app/configs/juice-shop.yaml"
+echo "    --config /app/configs/juice-shop-lite.yaml"
 echo ""
