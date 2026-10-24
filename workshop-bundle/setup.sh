@@ -9,6 +9,10 @@ TOOLS_DIR="$SCRIPT_DIR/tools"
 WORKSPACE_DIR="$SCRIPT_DIR/workspace"
 CONFIGS_DIR="$TOOLS_DIR/shannon/configs"
 
+# Upstream PentestGPT removed the `pentestgpt` CLI on 2026-07-13 (commit ab5fbb4).
+# Pin to the last commit that still ships it.
+PENTESTGPT_REF="b986930"
+
 echo "========================================="
 echo "SANS Offensive AI Workshop - Setup"
 echo "========================================="
@@ -46,6 +50,9 @@ else
     echo "✓ PentestGPT repository already exists"
 fi
 
+echo "Pinning PentestGPT to $PENTESTGPT_REF..."
+git -C "$TOOLS_DIR/PentestGPT" checkout -q "$PENTESTGPT_REF"
+
 # Copy Dockerfiles if they don't exist
 echo ""
 echo "Setting up Dockerfiles..."
@@ -69,9 +76,9 @@ echo ""
 echo "Setting up Shannon configuration..."
 mkdir -p "$CONFIGS_DIR"
 
-if [ -f "../juice-shop.yaml" ]; then
+if [ -f "$SCRIPT_DIR/../juice-shop.yaml" ]; then
     echo "Copying juice-shop.yaml to Shannon configs..."
-    cp "../juice-shop.yaml" "$CONFIGS_DIR/juice-shop.yaml"
+    cp "$SCRIPT_DIR/../juice-shop.yaml" "$CONFIGS_DIR/juice-shop.yaml"
 else
     echo "⚠️  juice-shop.yaml not found in parent directory"
 fi

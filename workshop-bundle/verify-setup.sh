@@ -2,7 +2,6 @@
 # Verification script for SANS Offensive AI Workshop setup
 # This script checks if all components are properly configured
 
-set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOOLS_DIR="$SCRIPT_DIR/tools"
@@ -25,7 +24,7 @@ check_file() {
         return 0
     else
         echo "✗ $description (missing: $file)"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
         return 1
     fi
 }
@@ -39,7 +38,7 @@ check_dir() {
         return 0
     else
         echo "✗ $description (missing: $dir)"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
         return 1
     fi
 }
@@ -47,12 +46,12 @@ check_dir() {
 # Function to check if a service is running
 check_service() {
     local service="$1"
-    if docker compose ps | grep -q "$service.*running"; then
+    if docker compose ps --status running --services 2>/dev/null | grep -qx "$service"; then
         echo "✓ Service $service is running"
         return 0
     else
         echo "⚠ Service $service is not running"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
         return 1
     fi
 }
@@ -62,7 +61,7 @@ echo "Checking environment configuration..."
 if check_file "$SCRIPT_DIR/.env" "Environment file (.env)"; then
     if grep -q "ANTHROPIC_API_KEY=<add key>" "$SCRIPT_DIR/.env" || grep -q "ANTHROPIC_API_KEY=$" "$SCRIPT_DIR/.env"; then
         echo "  ⚠ Warning: ANTHROPIC_API_KEY appears to be unset in .env"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     else
         echo "  ✓ ANTHROPIC_API_KEY appears to be configured"
     fi
@@ -94,7 +93,7 @@ if check_dir "$WORKSPACE_DIR/juice-shop" "Juice Shop source code"; then
         echo "  ✓ Juice Shop is a valid git repository"
     else
         echo "  ✗ Juice Shop directory exists but is not a git repository"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     fi
 fi
 echo ""
@@ -114,18 +113,17 @@ if command -v docker &> /dev/null; then
         check_service "shannon-postgres"
         check_service "shannon-temporal"
         check_service "shannon-temporal-ui"
-        check_service "shannon-worker"
         check_service "pentestgpt"
         echo ""
         echo "To check service health: docker compose ps"
     else
         echo "⚠ Docker Compose services are not running yet"
         echo "  Start with: docker compose up -d"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     fi
 else
     echo "⚠ Docker command not found - cannot check service status"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS + 1))
 fi
 echo ""
 

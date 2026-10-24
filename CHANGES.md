@@ -163,3 +163,11 @@ Shannon analyzes source code in the workspace and writes findings there. Proper 
 - Stale findings from being re-ingested
 - Analysis degradation
 - Incorrect results from cached data
+
+## October 2026 Fixes
+
+- `juice-shop.yaml`: the schema change described in section 1 had not actually been applied. Every rule now uses `type: url_path` / `type: method` with `value:`, and current Shannon parses the file.
+- `setup.sh`: pins PentestGPT to commit `b986930`. Upstream removed the `pentestgpt` command on 2026-07-13. `setup.sh` also finds `juice-shop.yaml` relative to the script instead of the current directory.
+- `docker-compose.yml`: `shannon-worker` is in the `shannon` profile, so `docker compose up -d` no longer starts it (it exited at once without a target). `docker compose run` still works. Its audit logs now land in `out/shannon/` (Shannon 3.x writes them to `/app/workspaces`).
+- `verify-setup.sh`: runs every check and prints the summary. Before, `set -e` with `((ERRORS++))` stopped it at the first problem. It also now detects running services correctly.
+- README: dropped the manual step that overwrote the upstream Dockerfiles, and replaced the nonexistent `-n` PentestGPT flag with `--mode pentest`.

@@ -83,8 +83,11 @@ services:
       shannon-temporal:
         condition: service_healthy
 
-  # Shannon Worker - The autonomous pentesting agent
+  # Shannon Worker - The autonomous pentesting agent.
+  # One-shot job: the worker needs a target URL and repo path, so it is not
+  # started by `docker compose up -d`. Run it with `docker compose run --rm shannon-worker ...`.
   shannon-worker:
+    profiles: ["shannon"]
     build:
       context: ./tools/shannon
       dockerfile: Dockerfile
@@ -100,7 +103,8 @@ services:
       shannon-temporal:
         condition: service_healthy
     volumes:
-      - ./out/shannon:/app/out:rw
+      # Shannon 3.x writes audit logs and session data to /app/workspaces
+      - ./out/shannon:/app/workspaces:rw
       - ./workspace:/app/repos:rw
       - ./tools/shannon/configs:/app/configs:ro
     shm_size: 2gb

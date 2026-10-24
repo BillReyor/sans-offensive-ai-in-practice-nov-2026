@@ -54,7 +54,7 @@ sans-ai-workshop-nov-2026/
     │   │   ├── apps/                  <-- Shannon source code
     │   │   ├── configs/               <-- Pentest config files (e.g., juice-shop.yaml)
     │   │   └── ...
-    │   └── PentestGPT/                <-- git clone https://github.com/greydgl/pentestgpt
+    │   └── PentestGPT/                <-- git clone https://github.com/greydgl/pentestgpt (pinned to b986930)
     │       ├── Dockerfile             <-- Must exist (used by docker compose build)
     │       └── ...
     │
@@ -98,8 +98,8 @@ cd sans-offensive-ai-in-practice-nov-2026/workshop-bundle
 
 The setup script will:
 1. Create the tools directory structure
-2. Clone Shannon and PentestGPT repositories
-3. Copy the necessary Dockerfiles
+2. Clone Shannon and PentestGPT repositories (PentestGPT is pinned to commit `b986930`, the last version with the `pentestgpt` command)
+3. Copy the fallback Dockerfiles only if a repo doesn't ship its own (both currently do)
 4. Set up the Shannon configuration
 5. Clone the Juice Shop source code for analysis
 6. Create workspace and output directories
@@ -137,14 +137,13 @@ cp .env.example .env
 mkdir -p tools
 git clone https://github.com/KeygraphHQ/shannon tools/shannon
 git clone https://github.com/greydgl/pentestgpt tools/PentestGPT
+# Upstream removed the `pentestgpt` command on 2026-07-13; pin to the last version that has it
+git -C tools/PentestGPT checkout b986930
 ```
 
-### 3. Copy Dockerfiles to the tool directories
+### 3. Check the Dockerfiles
 
-```bash
-cp dockerfiles/shannon.Dockerfile tools/shannon/Dockerfile
-cp dockerfiles/pentestgpt.Dockerfile tools/PentestGPT/Dockerfile
-```
+Both Shannon and PentestGPT ship their own `Dockerfile`, and Docker Compose builds from those. **Don't overwrite them** with the files in `dockerfiles/`; those are outdated fallbacks that no longer build against current upstream code.
 
 ### 4. Set up Shannon configuration
 
@@ -180,7 +179,7 @@ This will start:
 - **pentestgpt** - PenTestGPT tooling
 - **Shannon Temporal** - (you can validate via: `nc -vz localhost 7233`) (workflow engine)
 - **Shannon Temporal UI** - http://localhost:8233 (monitoring dashboard)
-- **Shannon Worker** - AI pentest agent
+- **Shannon Worker** is *not* started here. It's a one-shot job you launch with `docker compose run` (see Run Shannon below)
 - **PostgreSQL** - Database for Temporal
 
 ---
@@ -271,7 +270,7 @@ docker compose exec shannon-worker node apps/worker/dist/temporal/query.js <work
 
 Findings will be written to:
 - `workshop-bundle/workspace/juice-shop/.shannon/deliverables` - Security findings and reports
-- `out/shannon/` - Audit logs and session data
+- `out/shannon/` - Audit logs and session data (mounted at `/app/workspaces` in the worker)
 
 The pentest runs through 5 phases:
 1. **Pre-Recon** - External scans + code analysis
@@ -336,7 +335,7 @@ pentestgpt --target juice-shop:3000 --instruction "Focus on authentication bypas
 
 ```bash
 pentestgpt --target juice-shop:3000              # Interactive TUI mode
-pentestgpt --target juice-shop:3000 -n           # Non-interactive mode
+pentestgpt --target juice-shop:3000 --mode pentest  # Breadth-first vuln identification (default mode is ctf)
 pentestgpt --target juice-shop:3000 -v           # Verbose output
 pentestgpt --list-sessions                       # List previous sessions
 pentestgpt --resume --session-id <id>            # Resume a session
