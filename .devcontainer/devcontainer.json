@@ -1,0 +1,37 @@
+// Dev container for running the workshop in GitHub Codespaces (or any dev
+// container host). Participants only need a browser: Docker runs inside the
+// codespace, so no Docker Desktop, WSL2 or admin rights on their laptop.
+{
+  "name": "SANS Offensive AI Workshop",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {}
+  },
+
+  // The tool images need about 11 GB, and Shannon runs a headless browser.
+  // A 4-core / 16 GB / 32 GB codespace is the smallest that fits.
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "16gb",
+    "storage": "32gb"
+  },
+
+  // Your Anthropic API key comes from a Codespaces secret named ANTHROPIC_API_KEY
+  // (github.com → Settings → Codespaces → Secrets), never from a committed file.
+  "secrets": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Your own Anthropic API key, from https://platform.claude.com/"
+    }
+  },
+
+  // Clone the tools and build the images once, when the codespace is created.
+  "postCreateCommand": "cd workshop-bundle && ./setup.sh && docker compose --profile shannon build",
+  // Start the lab services every time the codespace starts.
+  "postStartCommand": "cd workshop-bundle && docker compose up -d juice-shop shannon-postgres shannon-temporal shannon-temporal-ui pentestgpt",
+
+  "forwardPorts": [3000, 8233],
+  "portsAttributes": {
+    "3000": { "label": "Juice Shop", "onAutoForward": "notify" },
+    "8233": { "label": "Temporal UI", "onAutoForward": "notify" }
+  }
+}

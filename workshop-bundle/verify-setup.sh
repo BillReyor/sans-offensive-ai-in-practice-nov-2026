@@ -2,9 +2,11 @@
 # Verification script for SANS Offensive AI Workshop setup
 # This script checks if all components are properly configured
 
-set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Git Bash on Windows rewrites arguments like /app/repos into Windows paths;
+# turn that off so the container paths below reach Docker unchanged.
+export MSYS_NO_PATHCONV=1
 TOOLS_DIR="$SCRIPT_DIR/tools"
 WORKSPACE_DIR="$SCRIPT_DIR/workspace"
 
@@ -15,6 +17,7 @@ echo ""
 
 ERRORS=0
 WARNINGS=0
+KEY_CONFIGURED=0
 
 # Function to check if a file exists
 check_file() {
@@ -25,7 +28,7 @@ check_file() {
         return 0
     else
         echo "✗ $description (missing: $file)"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
         return 1
     fi
 }
@@ -39,7 +42,7 @@ check_dir() {
         return 0
     else
         echo "✗ $description (missing: $dir)"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
         return 1
     fi
 }
@@ -47,24 +50,29 @@ check_dir() {
 # Function to check if a service is running
 check_service() {
     local service="$1"
-    if docker compose ps | grep -q "$service.*running"; then
+    if docker compose ps --status running --services 2>/dev/null | grep -qx "$service"; then
         echo "✓ Service $service is running"
         return 0
     else
         echo "⚠ Service $service is not running"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
         return 1
     fi
 }
 
 # Check environment file
 echo "Checking environment configuration..."
-if check_file "$SCRIPT_DIR/.env" "Environment file (.env)"; then
+if [ -n "${ANTHROPIC_API_KEY:-}" ] && [ "$ANTHROPIC_API_KEY" != "<add key>" ]; then
+    # Set in the environment (e.g. a Codespaces secret); Compose prefers it over .env
+    echo "✓ ANTHROPIC_API_KEY is set in the environment"
+    KEY_CONFIGURED=1
+elif check_file "$SCRIPT_DIR/.env" "Environment file (.env)"; then
     if grep -q "ANTHROPIC_API_KEY=<add key>" "$SCRIPT_DIR/.env" || grep -q "ANTHROPIC_API_KEY=$" "$SCRIPT_DIR/.env"; then
         echo "  ⚠ Warning: ANTHROPIC_API_KEY appears to be unset in .env"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     else
         echo "  ✓ ANTHROPIC_API_KEY appears to be configured"
+        KEY_CONFIGURED=1
     fi
 fi
 echo ""
@@ -81,9 +89,30 @@ check_file "$TOOLS_DIR/shannon/Dockerfile" "Shannon Dockerfile"
 check_file "$TOOLS_DIR/PentestGPT/Dockerfile" "PentestGPT Dockerfile"
 echo ""
 
+# Check line endings. Git for Windows converts to CRLF by default, which
+# breaks bash scripts and the containers' entrypoint scripts.
+echo "Checking line endings..."
+CRLF_FOUND=0
+for f in "$SCRIPT_DIR/setup.sh" "$SCRIPT_DIR/reset-workspace.sh" \
+         "$TOOLS_DIR/shannon/entrypoint.sh" "$TOOLS_DIR/PentestGPT/scripts/entrypoint.sh"; do
+    if [ -f "$f" ] && grep -q $'\r' "$f"; then
+        echo "✗ Windows (CRLF) line endings in $f"
+        ERRORS=$((ERRORS + 1))
+        CRLF_FOUND=1
+    fi
+done
+if [ "$CRLF_FOUND" -eq 1 ]; then
+    echo "  Fix: run 'git config --global core.autocrlf input', delete the tools/ folder"
+    echo "  and this repository, then clone again and re-run setup.sh (see README, Windows)"
+else
+    echo "✓ Scripts use LF line endings"
+fi
+echo ""
+
 # Check Shannon configuration
 echo "Checking Shannon configuration..."
 check_file "$TOOLS_DIR/shannon/configs/juice-shop.yaml" "Shannon juice-shop.yaml config"
+check_file "$TOOLS_DIR/shannon/configs/juice-shop-lite.yaml" "Shannon juice-shop-lite.yaml config (workshop)"
 echo ""
 
 # Check workspace
@@ -94,7 +123,7 @@ if check_dir "$WORKSPACE_DIR/juice-shop" "Juice Shop source code"; then
         echo "  ✓ Juice Shop is a valid git repository"
     else
         echo "  ✗ Juice Shop directory exists but is not a git repository"
-        ((ERRORS++))
+        ERRORS=$((ERRORS + 1))
     fi
 fi
 echo ""
@@ -114,18 +143,42 @@ if command -v docker &> /dev/null; then
         check_service "shannon-postgres"
         check_service "shannon-temporal"
         check_service "shannon-temporal-ui"
-        check_service "shannon-worker"
         check_service "pentestgpt"
         echo ""
         echo "To check service health: docker compose ps"
     else
         echo "⚠ Docker Compose services are not running yet"
         echo "  Start with: docker compose up -d"
-        ((WARNINGS++))
+        WARNINGS=$((WARNINGS + 1))
     fi
 else
     echo "⚠ Docker command not found - cannot check service status"
-    ((WARNINGS++))
+    WARNINGS=$((WARNINGS + 1))
+fi
+echo ""
+
+# Check the API key with one live model call (costs a few cents, runs no scan).
+# Each participant uses their own key, so catch bad keys before the workshop.
+echo "Checking Anthropic API key with Shannon (--validate-model)..."
+if [ "$KEY_CONFIGURED" -ne 1 ]; then
+    echo "⚠ Skipped: ANTHROPIC_API_KEY is not set in .env"
+    WARNINGS=$((WARNINGS + 1))
+elif ! (cd "$SCRIPT_DIR" && docker compose ps --status running --services 2>/dev/null | grep -qx "shannon-temporal"); then
+    echo "⚠ Skipped: start the services first (docker compose up -d)"
+    WARNINGS=$((WARNINGS + 1))
+else
+    KEY_CHECK_LOG="$(mktemp)"
+    (cd "$SCRIPT_DIR" && docker compose run --rm shannon-worker node apps/worker/dist/temporal/worker.js \
+        http://juice-shop:3000 /app/repos/juice-shop \
+        --task-queue shannon --config /app/configs/juice-shop-lite.yaml --validate-model) > "$KEY_CHECK_LOG" 2>&1
+    if grep -q "Model validated" "$KEY_CHECK_LOG"; then
+        echo "✓ API key works and passes Shannon's security-access check"
+    else
+        echo "✗ API key check failed. Last errors from Shannon:"
+        sed 's/\x1b\[[0-9;]*m//g' "$KEY_CHECK_LOG" | grep -E "\[(WARN|ERROR)\]|[Ee]rror" | tail -5 | sed 's/^/    /'
+        ERRORS=$((ERRORS + 1))
+    fi
+    rm -f "$KEY_CHECK_LOG"
 fi
 echo ""
 

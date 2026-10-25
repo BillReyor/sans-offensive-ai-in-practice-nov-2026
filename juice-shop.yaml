@@ -20,111 +20,111 @@ rules:
     # Keep focus tight — each focus rule pulls agent attention toward it.
     # Four specific paths produces the core demo findings without re-widening.
     - description: "Login endpoint - SQLi auth bypass (the demo money shot)"
-      type: path
-      url_path: "/rest/user/login"
+      type: url_path
+      value: "/rest/user/login"
     - description: "User registration - mass assignment privilege escalation"
-      type: path
-      url_path: "/api/Users"
+      type: url_path
+      value: "/api/Users"
     - description: "Basket - IDOR"
-      type: path
-      url_path: "/rest/basket/*"
+      type: url_path
+      value: "/rest/basket/*"
     - description: "B2B order - SSTI"
-      type: path
-      url_path: "/b2b/v2/orders"
+      type: url_path
+      value: "/b2b/v2/orders"
 
   avoid:
     # --- Auth/authz rabbit holes ---
     - description: "Password reset flow - slow email-dependent exploit chains"
-      type: path
-      url_path: "/rest/user/reset-password"
+      type: url_path
+      value: "/rest/user/reset-password"
     - description: "Security questions - dead-end auth vector"
-      type: path
-      url_path: "/rest/user/security-question"
+      type: url_path
+      value: "/rest/user/security-question"
     - description: "2FA endpoints - out of scope for demo"
-      type: path
-      url_path: "/rest/2fa/*"
+      type: url_path
+      value: "/rest/2fa/*"
     - description: "OAuth/SSO - slow third-party redirect chains"
-      type: path
-      url_path: "/rest/saveLoginIp"
+      type: url_path
+      value: "/rest/saveLoginIp"
     - description: "Data export - auth exploit agent rabbit hole"
-      type: path
-      url_path: "/rest/user/data-export"
+      type: url_path
+      value: "/rest/user/data-export"
     - description: "Change password - overlaps with auth bypass demo"
-      type: path
-      url_path: "/rest/user/change-password"
+      type: url_path
+      value: "/rest/user/change-password"
 
     # --- XSS sinks the agent tends to explore ---
     - description: "Complaint form - stored XSS vector"
-      type: path
-      url_path: "/#/complain"
+      type: url_path
+      value: "/#/complain"
     - description: "Contact form"
-      type: path
-      url_path: "/#/contact"
+      type: url_path
+      value: "/#/contact"
     - description: "Feedback page"
-      type: path
-      url_path: "/#/contact/feedback"
+      type: url_path
+      value: "/#/contact/feedback"
     - description: "Chatbot - SSRF/XSS hybrid surface"
-      type: path
-      url_path: "/rest/chatbot/*"
+      type: url_path
+      value: "/rest/chatbot/*"
 
     # --- HTTP method restrictions ---
     - description: "Skip OPTIONS preflight testing"
       type: method
-      url_path: "OPTIONS"
+      value: "OPTIONS"
     - description: "Skip HEAD requests"
       type: method
-      url_path: "HEAD"
+      value: "HEAD"
 
     # --- Frontend routes (XSS hypothesis starving) ---
     - description: "Angular search route"
-      type: path
-      url_path: "/#/search"
+      type: url_path
+      value: "/#/search"
     - description: "Track orders page"
-      type: path
-      url_path: "/#/track-result"
+      type: url_path
+      value: "/#/track-result"
     - description: "Product pages"
-      type: path
-      url_path: "/#/product"
+      type: url_path
+      value: "/#/product"
     - description: "Profile page - also starves SSRF hypotheses"
-      type: path
-      url_path: "/profile"
+      type: url_path
+      value: "/profile"
 
     # --- Static assets ---
     - description: "Angular bundles"
-      type: path
-      url_path: "/main.js"
+      type: url_path
+      value: "/main.js"
     - description: "Runtime/vendor bundles"
-      type: path
-      url_path: "/runtime.js"
+      type: url_path
+      value: "/runtime.js"
     - description: "i18n translations"
-      type: path
-      url_path: "/assets/i18n/*"
+      type: url_path
+      value: "/assets/i18n/*"
     - description: "Public images"
-      type: path
-      url_path: "/assets/public/*"
+      type: url_path
+      value: "/assets/public/*"
 
     # --- Noise endpoints ---
     - description: "FTP honeypot"
-      type: path
-      url_path: "/ftp/*"
+      type: url_path
+      value: "/ftp/*"
     - description: "Challenge snippets"
-      type: path
-      url_path: "/snippets/*"
+      type: url_path
+      value: "/snippets/*"
     - description: "Continue-code challenge tracker"
-      type: path
-      url_path: "/rest/continue-code*"
+      type: url_path
+      value: "/rest/continue-code*"
     - description: "Captcha endpoints"
-      type: path
-      url_path: "/rest/captcha*"
+      type: url_path
+      value: "/rest/captcha*"
     - description: "Logout - prevents session kills mid-test"
-      type: path
-      url_path: "/rest/user/logout"
+      type: url_path
+      value: "/rest/user/logout"
     - description: "Metrics"
-      type: path
-      url_path: "/metrics"
+      type: url_path
+      value: "/metrics"
     - description: "Swagger/API docs - read-only, no exploit surface"
-      type: path
-      url_path: "/api-docs"
+      type: url_path
+      value: "/api-docs"
     - description: "Static HTML shell"
-      type: path
-      url_path: "/index.html"
+      type: url_path
+      value: "/index.html"

@@ -1,0 +1,128 @@
+# Juice Shop pentest configuration — WORKSHOP LITE (analysis only)
+# Runs recon and vulnerability analysis but skips the exploitation phase,
+# and focuses on two endpoints. Use this for participant runs; the full
+# config is juice-shop.yaml.
+
+exploit: "false"
+
+authentication:
+  login_type: form
+  login_url: "http://juice-shop:3000/#/login"
+  credentials:
+    username: "admin@juice-sh.op"
+    password: "admin123"
+  login_flow:
+    - "Type $username into the email field"
+    - "Type $password into the password field"
+    - "Click the 'Log in' button"
+  success_condition:
+    type: url_contains
+    value: "/search"
+
+rules:
+  focus:
+    # Workshop "lite" run: two endpoints only, to keep each participant's
+    # scan short and cheap on their own API key.
+    - description: "Login endpoint - SQLi auth bypass (the demo money shot)"
+      type: url_path
+      value: "/rest/user/login"
+    - description: "User registration - mass assignment privilege escalation"
+      type: url_path
+      value: "/api/Users"
+
+  avoid:
+    # --- Auth/authz rabbit holes ---
+    - description: "Password reset flow - slow email-dependent exploit chains"
+      type: url_path
+      value: "/rest/user/reset-password"
+    - description: "Security questions - dead-end auth vector"
+      type: url_path
+      value: "/rest/user/security-question"
+    - description: "2FA endpoints - out of scope for demo"
+      type: url_path
+      value: "/rest/2fa/*"
+    - description: "OAuth/SSO - slow third-party redirect chains"
+      type: url_path
+      value: "/rest/saveLoginIp"
+    - description: "Data export - auth exploit agent rabbit hole"
+      type: url_path
+      value: "/rest/user/data-export"
+    - description: "Change password - overlaps with auth bypass demo"
+      type: url_path
+      value: "/rest/user/change-password"
+
+    # --- XSS sinks the agent tends to explore ---
+    - description: "Complaint form - stored XSS vector"
+      type: url_path
+      value: "/#/complain"
+    - description: "Contact form"
+      type: url_path
+      value: "/#/contact"
+    - description: "Feedback page"
+      type: url_path
+      value: "/#/contact/feedback"
+    - description: "Chatbot - SSRF/XSS hybrid surface"
+      type: url_path
+      value: "/rest/chatbot/*"
+
+    # --- HTTP method restrictions ---
+    - description: "Skip OPTIONS preflight testing"
+      type: method
+      value: "OPTIONS"
+    - description: "Skip HEAD requests"
+      type: method
+      value: "HEAD"
+
+    # --- Frontend routes (XSS hypothesis starving) ---
+    - description: "Angular search route"
+      type: url_path
+      value: "/#/search"
+    - description: "Track orders page"
+      type: url_path
+      value: "/#/track-result"
+    - description: "Product pages"
+      type: url_path
+      value: "/#/product"
+    - description: "Profile page - also starves SSRF hypotheses"
+      type: url_path
+      value: "/profile"
+
+    # --- Static assets ---
+    - description: "Angular bundles"
+      type: url_path
+      value: "/main.js"
+    - description: "Runtime/vendor bundles"
+      type: url_path
+      value: "/runtime.js"
+    - description: "i18n translations"
+      type: url_path
+      value: "/assets/i18n/*"
+    - description: "Public images"
+      type: url_path
+      value: "/assets/public/*"
+
+    # --- Noise endpoints ---
+    - description: "FTP honeypot"
+      type: url_path
+      value: "/ftp/*"
+    - description: "Challenge snippets"
+      type: url_path
+      value: "/snippets/*"
+    - description: "Continue-code challenge tracker"
+      type: url_path
+      value: "/rest/continue-code*"
+    - description: "Captcha endpoints"
+      type: url_path
+      value: "/rest/captcha*"
+    - description: "Logout - prevents session kills mid-test"
+      type: url_path
+      value: "/rest/user/logout"
+    - description: "Metrics"
+      type: url_path
+      value: "/metrics"
+    - description: "Swagger/API docs - read-only, no exploit surface"
+      type: url_path
+      value: "/api-docs"
+    - description: "Static HTML shell"
+      type: url_path
+      value: "/index.html"
