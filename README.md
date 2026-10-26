@@ -36,7 +36,10 @@ pentestgpt --target juice-shop:3000 --no-telemetry
 **Monitor:**
 - Juice Shop: http://localhost:3000
 - Temporal UI: http://localhost:8233
-- Reports: `workshop-bundle/out/` and `workshop-bundle/workspace/juice-shop/.shannon/deliverables/`
+- Reports (see [Where reports are saved](#where-reports-are-saved)):
+  - ZAP: `workshop-bundle/out/zap/zap_baseline_report.html`
+  - Shannon: `workshop-bundle/workspace/juice-shop/.shannon/deliverables/`
+  - PentestGPT: `workshop-bundle/workspace/workspace/juice-shop-walkthrough.md`
 
 ---
 
@@ -421,6 +424,20 @@ pentestgpt --target juice-shop:3000 --no-telemetry --resume --session-id <id>  #
 
 PentestGPT prints its progress as plain text: each stage (for example `[Stage 1/3] Asset Identification`), followed by every tool it runs (`[TOOL] Bash: ...`). It runs Claude Code inside the container with permission prompts turned off, so the commands it chooses run straight away. The container is the safety boundary.
 
+### Output
+
+The walkthrough it generates is written inside the mounted `/workspace`, so it persists on your host at:
+
+- `workshop-bundle/workspace/workspace/juice-shop-walkthrough.md`
+
+The run also prints a final report to the screen and saves a copy to `/tmp/FINAL_REPORT.md`, and it keeps session state under `~/.pentestgpt/sessions`. **Both live inside the container and are *not* mounted, so they are lost when the container is recreated or removed** (for example by `docker compose up -d pentestgpt`, a rebuild, or `docker compose down`). To keep the final report, copy it out before removing the container:
+
+```bash
+docker compose cp pentestgpt:/tmp/FINAL_REPORT.md out/pentestgpt-FINAL_REPORT.md
+```
+
+See [Where reports are saved](#where-reports-are-saved) for every tool's output location.
+
 To stop it, press **Ctrl+C**. If anything is still running afterwards, restart the container:
 
 ```bash
@@ -434,6 +451,27 @@ If you encounter this error, the container needs to be recreated:
 ```bash
 docker compose up -d pentestgpt
 ```
+
+---
+
+## Where reports are saved
+
+All host paths below are relative to the `workshop-bundle/` directory. Anything under `workspace/` or `out/` is bind-mounted into the containers, so it persists on your machine (or in the codespace) after a run.
+
+| Tool | Report / output | Host path |
+| --- | --- | --- |
+| **ZAP** | Baseline scan report (HTML) | `out/zap/zap_baseline_report.html` |
+| **Shannon** | Security findings and reports | `workspace/juice-shop/.shannon/deliverables/` |
+| **Shannon** | Audit logs and session data | `out/shannon/` |
+| **PentestGPT** | Generated walkthrough (Markdown) | `workspace/workspace/juice-shop-walkthrough.md` |
+
+**Not saved to the host.** PentestGPT also writes a final report to `/tmp/FINAL_REPORT.md` and session state to `~/.pentestgpt/sessions` *inside* the container. Neither path is mounted, so both are lost when the container is recreated or removed. Copy the report out if you want to keep it:
+
+```bash
+docker compose cp pentestgpt:/tmp/FINAL_REPORT.md out/pentestgpt-FINAL_REPORT.md
+```
+
+> In a codespace, the same paths apply under the repository root (for example `/workspaces/sans-offensive-ai-in-practice-nov-2026/workshop-bundle/out/zap/`). Use the **Download…** option in the file explorer, or `gh codespace cp`, to pull a report onto your laptop.
 
 ---
 
