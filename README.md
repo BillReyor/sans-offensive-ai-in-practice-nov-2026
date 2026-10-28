@@ -43,7 +43,7 @@ Shannon and PentestGPT both call the Anthropic API on **your** key. ZAP does not
 
 - **Docker + Docker Compose** — Docker Desktop: https://www.docker.com/products/docker-desktop/
 - **An Anthropic API key** — https://platform.claude.com/ (see [cost & API credit](#before-you-start-cost--api-credit))
-- **Resources:** at least **8 GB of memory** available to Docker and about **20 GB of free disk**.
+- **Resources:** at least **8 GB of memory** available to Docker and about **20 GB of free disk** (≈30 GB if you also build the optional ARTEX image).
 - **Free ports:** `3000`, `7233`, and `8233`.
 - **Outbound network** to `api.anthropic.com`, Docker Hub, GitHub, npm, PyPI, and the Ubuntu package mirrors. A TLS-inspecting proxy breaks the image builds and the API calls.
 
@@ -204,8 +204,11 @@ sans-offensive-ai-in-practice-nov-2026/
     │   │   ├── apps/
     │   │   ├── configs/               <-- juice-shop.yaml, juice-shop-lite.yaml
     │   │   └── ...
-    │   └── PentestGPT/                <-- git clone https://github.com/greydgl/pentestgpt (pinned b986930)
-    │       ├── Dockerfile
+    │   ├── PentestGPT/                <-- git clone https://github.com/greydgl/pentestgpt (pinned b986930)
+    │   │   ├── Dockerfile
+    │   │   └── ...
+    │   └── artex/                     <-- (optional) git clone https://github.com/lenaxia/artex
+    │       ├── workshop.Dockerfile    <-- copied in by setup.sh (multi-stage build)
     │       └── ...
     │
     ├── workspace/                     <-- Shared working dir (mounted into containers)
@@ -214,7 +217,8 @@ sans-offensive-ai-in-practice-nov-2026/
     │
     └── out/                           <-- Tool output / reports
         ├── zap/                       <-- ZAP scan reports
-        └── shannon/                   <-- Shannon audit logs and session data
+        ├── shannon/                   <-- Shannon audit logs and session data
+        └── artex/                     <-- (optional) ARTEX findings, sessions, reports
 ```
 
 - The `tools/` directory holds **full git clones** of Shannon and PentestGPT — Compose needs each repo's `Dockerfile` to build the worker containers.
@@ -402,9 +406,11 @@ The MITM proxy is published on **127.0.0.1:8788** (localhost only) if you want t
 
 ARTEX calls the Anthropic API on the same `ANTHROPIC_API_KEY` as Shannon and PentestGPT, and it's autonomous — budget for it the same way and keep headroom (see [Before you start: cost & API credit](#before-you-start-cost--api-credit)). ZAP is the only tool that costs nothing.
 
+> **Pick a cheaper model.** With `ARTEX_LLM_MODEL` empty, ARTEX defaults to an **Opus** model — the most expensive one. For a cost-controlled workshop, set `ARTEX_LLM_MODEL` in `.env` to a cheaper model (e.g. `claude-sonnet-4-6`) or choose one in the UI before starting a task.
+
 ### Output
 
-ARTEX persists findings, sessions, and reports to **`out/artex/`** on the host (mounted at `/app/data`).
+ARTEX persists findings, sessions, and reports to **`out/artex/`** on the host (mounted at `/app/data`). The admin account lives in `artex-postgres`, so it survives restarts; the session signing key is regenerated when the container is recreated, so you may need to log in again after a rebuild.
 
 ### Stop ARTEX
 
@@ -419,7 +425,7 @@ ARTEX runs in a Codespace the same way the rest of the lab does, with a few cave
 
 - **Forward the port.** Open the **Ports** tab and use the forwarded URL for **8787**. The `/setup` and login flow works over the forwarded HTTPS URL.
 - **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/8 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a small machine — stop one first — or use a larger (8-core/16 GB) Codespace.
-- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster, and its image adds a few GB. Stop the Codespace when idle.
+- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a default (~32 GB) Codespace; `docker builder prune` reclaims build cache. Stop the Codespace when idle.
 
 > **Reproducible builds.** `setup.sh` pins ARTEX to a specific upstream commit (`ARTEX_REF` in `setup.sh`), so every participant builds the same source. Bump that ref when you want a newer ARTEX.
 
