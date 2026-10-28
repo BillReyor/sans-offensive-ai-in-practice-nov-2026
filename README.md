@@ -19,6 +19,7 @@ In this lab you run three open-source, AI-assisted pentest tools — **ZAP**, **
 - [Run ZAP baseline](#run-zap-baseline)
 - [Run Shannon](#run-shannon)
 - [Run PentestGPT](#run-pentestgpt)
+- [Run ARTEX (optional 4th tool)](#run-artex-optional-4th-tool)
 - [Where reports are saved](#where-reports-are-saved)
 - [Resetting between runs](#resetting-between-runs)
 - [Troubleshooting](#troubleshooting)
@@ -232,7 +233,9 @@ The three tools are independent and **safe to run at the same time** — they do
 2. **While Shannon runs**, do the [ZAP baseline](#run-zap-baseline) (~5 min) and a [PentestGPT session](#run-pentestgpt) (~10–20 min). Both share the live Juice Shop target with Shannon without any problem.
 3. **Come back to Shannon** when it finishes and review its report.
 
-> Remember all three AI tools draw on the same API credit (ZAP is free). See [cost & API credit](#before-you-start-cost--api-credit).
+Optionally, add [ARTEX](#run-artex-optional-4th-tool) as a supervised, GUI-driven segment. It's interactive (you approve each step), so run it as its own focused block rather than fire-and-forget — and not at the same time as a Shannon scan on a small machine.
+
+> Remember the AI tools all draw on the same API credit (ZAP is free). See [cost & API credit](#before-you-start-cost--api-credit).
 
 ---
 
@@ -368,6 +371,60 @@ To stop it, press **Ctrl+C**. If anything is still running, restart the containe
 
 ---
 
+## Run ARTEX (optional 4th tool)
+
+ARTEX is an **AI autonomous pentester with a web dashboard and a human-in-the-loop approval gate** — a different flavour from the other three: instead of reading logs, you *watch and steer* the agents from a UI, approving each tool call. It runs an LLM-driven planner/worker agent system over a dual asset/exploration graph, records traffic through a MITM proxy, and visualizes findings, coverage, and token usage.
+
+It's **optional** and gated behind the `artex` Docker Compose profile, so `docker compose up -d` never starts it. It's **built from source** (`setup.sh` clones ARTEX, and `docker compose` builds a multi-stage image — upstream publishes no usable image) and uses its **own** PostgreSQL, isolated from Shannon's.
+
+> ⚠️ **License and scope — read before using.** ARTEX is licensed **AGPL-3.0 with additional author usage limits** that permit only **local, isolated testing and research** and **prohibit scanning or attacking any online system**. In this workshop that means: point ARTEX **only at the local Juice Shop container**, never at any real or internet-facing target. See the project's README: https://github.com/lenaxia/artex
+
+### Start ARTEX
+
+From `workshop-bundle/` (services from setup should already be running):
+
+```bash
+docker compose --profile artex up -d artex
+```
+
+That starts ARTEX plus its dedicated Postgres and waits for Juice Shop to be healthy. **The first launch builds the image from source** (Next.js export → Go compile → Playwright/Chromium), which takes several minutes.
+
+### First-run setup
+
+1. Open the dashboard: **http://localhost:8787**
+2. On first visit you're sent to **`/setup`** to **set an admin password** (do this once per machine).
+3. Create a task and point it at the target URL **`http://juice-shop:3000`** (ARTEX reaches it on the Compose network).
+4. As the agents work, **approve tool calls** at the approval gate — it's also your cost throttle, so approve deliberately rather than blanket-allowing, or token usage climbs quickly.
+
+The MITM proxy is published on **127.0.0.1:8788** (localhost only) if you want to route traffic through it.
+
+### Cost
+
+ARTEX calls the Anthropic API on the same `ANTHROPIC_API_KEY` as Shannon and PentestGPT, and it's autonomous — budget for it the same way and keep headroom (see [Before you start: cost & API credit](#before-you-start-cost--api-credit)). ZAP is the only tool that costs nothing.
+
+### Output
+
+ARTEX persists findings, sessions, and reports to **`out/artex/`** on the host (mounted at `/app/data`).
+
+### Stop ARTEX
+
+```bash
+docker compose --profile artex stop artex artex-postgres
+# or remove them: docker compose --profile artex rm -sf artex artex-postgres
+```
+
+### Running ARTEX in a Codespace
+
+ARTEX runs in a Codespace the same way the rest of the lab does, with a few caveats:
+
+- **Forward the port.** Open the **Ports** tab and use the forwarded URL for **8787**. The `/setup` and login flow works over the forwarded HTTPS URL.
+- **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/8 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a small machine — stop one first — or use a larger (8-core/16 GB) Codespace.
+- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster, and its image adds a few GB. Stop the Codespace when idle.
+
+> **Reproducible builds.** `setup.sh` pins ARTEX to a specific upstream commit (`ARTEX_REF` in `setup.sh`), so every participant builds the same source. Bump that ref when you want a newer ARTEX.
+
+---
+
 ## Where reports are saved
 
 All host paths are relative to `workshop-bundle/`. Anything under `workspace/` or `out/` is bind-mounted, so it persists after a run.
@@ -378,6 +435,7 @@ All host paths are relative to `workshop-bundle/`. Anything under `workspace/` o
 | **Shannon** | Security findings and reports | `workspace/juice-shop/.shannon/deliverables/` |
 | **Shannon** | Audit logs and session data | `out/shannon/` |
 | **PentestGPT** | Generated walkthrough (Markdown) | `workspace/workspace/juice-shop-walkthrough.md` |
+| **ARTEX** (optional) | Findings, sessions, and reports | `out/artex/` |
 
 **Not saved to the host.** PentestGPT's `/tmp/FINAL_REPORT.md` and `~/.pentestgpt/sessions` live *inside* the container and are lost when it's recreated. Copy the report out if you want to keep it (command above).
 
