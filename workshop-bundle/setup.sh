@@ -16,6 +16,8 @@ PENTESTGPT_REF="b986930"
 # The Juice Shop source tag matches the bkimminich/juice-shop image tag in docker-compose.yml.
 SHANNON_REF="4bd88c1"
 JUICE_SHOP_REF="v20.3.0"
+# ARTEX (optional 4th tool) — english-ui branch; built from source.
+ARTEX_REF="f9642c1"
 
 # Clone with LF line endings on every platform. Git for Windows defaults to
 # CRLF, which breaks the bash entrypoints that get copied into the images.
@@ -74,9 +76,18 @@ else
     echo "✓ PentestGPT repository already exists"
 fi
 
-echo "Pinning Shannon to $SHANNON_REF and PentestGPT to $PENTESTGPT_REF..."
+# Clone ARTEX (optional 4th tool) if not already cloned
+if [ ! -d "$TOOLS_DIR/artex" ]; then
+    echo "Cloning ARTEX repository..."
+    "${GIT_CLONE[@]}" https://github.com/lenaxia/artex "$TOOLS_DIR/artex"
+else
+    echo "✓ ARTEX repository already exists"
+fi
+
+echo "Pinning Shannon to $SHANNON_REF, PentestGPT to $PENTESTGPT_REF, ARTEX to $ARTEX_REF..."
 git -C "$TOOLS_DIR/shannon" checkout -q "$SHANNON_REF"
 git -C "$TOOLS_DIR/PentestGPT" checkout -q "$PENTESTGPT_REF"
+git -C "$TOOLS_DIR/artex" checkout -q "$ARTEX_REF"
 
 # Copy Dockerfiles if they don't exist
 echo ""
@@ -94,6 +105,13 @@ if [ ! -f "$TOOLS_DIR/PentestGPT/Dockerfile" ]; then
     cp "$SCRIPT_DIR/dockerfiles/pentestgpt.Dockerfile" "$TOOLS_DIR/PentestGPT/Dockerfile"
 else
     echo "✓ Using PentestGPT's own Dockerfile"
+fi
+
+# ARTEX: upstream's own Dockerfile only assembles a pre-built binary, so always
+# use our multi-stage build Dockerfile (copied in as workshop.Dockerfile).
+if [ -d "$TOOLS_DIR/artex" ]; then
+    echo "Copying ARTEX workshop build Dockerfile..."
+    cp "$SCRIPT_DIR/dockerfiles/artex.Dockerfile" "$TOOLS_DIR/artex/workshop.Dockerfile"
 fi
 
 # Create Shannon configs directory and copy juice-shop.yaml
@@ -116,6 +134,8 @@ echo "Creating workspace directory structure..."
 mkdir -p "$WORKSPACE_DIR"
 mkdir -p "$SCRIPT_DIR/out/zap"
 mkdir -p "$SCRIPT_DIR/out/shannon"
+# ARTEX (optional 4th tool) writes findings/sessions here (bind-mounted to /app/data).
+mkdir -p "$SCRIPT_DIR/out/artex"
 
 # Clone Juice Shop source code
 if [ ! -d "$WORKSPACE_DIR/juice-shop" ]; then
