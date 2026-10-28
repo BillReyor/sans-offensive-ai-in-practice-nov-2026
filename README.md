@@ -425,7 +425,7 @@ The MITM proxy is published on **127.0.0.1:8788** (localhost only) if you want t
 
 ARTEX calls the Anthropic API on the same `ANTHROPIC_API_KEY` as Shannon and PentestGPT, and it's autonomous — budget for it the same way and keep headroom (see [Before you start: cost & API credit](#before-you-start-cost--api-credit)). ZAP is the only tool that costs nothing.
 
-> **Pick a cheaper model.** With `ARTEX_LLM_MODEL` empty, ARTEX defaults to an **Opus** model — the most expensive one. For a cost-controlled workshop, set `ARTEX_LLM_MODEL` in `.env` to a cheaper model (e.g. `claude-sonnet-4-6`) or choose one in the UI before starting a task.
+> **Model & cost.** `.env` ships **`ARTEX_LLM_MODEL=claude-sonnet-4-6`** by default to keep the workshop cheap (~$0.40/run). If you **clear** `ARTEX_LLM_MODEL`, ARTEX falls back to an **Opus** model — several times the cost and tokens. Change the model in `.env` or in the ARTEX UI (**System → LLM**) before starting a task. The same `.env` applies in a Codespace (the Codespaces secret only supplies the API key, not the model).
 
 ### Output
 
