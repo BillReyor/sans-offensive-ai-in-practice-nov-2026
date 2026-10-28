@@ -395,10 +395,29 @@ That starts ARTEX plus its dedicated Postgres and waits for Juice Shop to be hea
 
 ### First-run setup
 
-1. Open the dashboard: **http://localhost:8787**
-2. On first visit you're sent to **`/setup`** to **set an admin password** (do this once per machine).
-3. Create a task and point it at the target URL **`http://juice-shop:3000`** (ARTEX reaches it on the Compose network).
-4. As the agents work, **approve tool calls** at the approval gate — it's also your cost throttle, so approve deliberately rather than blanket-allowing, or token usage climbs quickly.
+1. **Open the dashboard** — **http://localhost:8787** locally, or the forwarded **8787** URL from the **Ports** tab in a Codespace.
+2. On first visit you land on **`/setup`** to **set an admin password** (once per machine; this works over the Codespace forwarded URL too).
+
+### Create and run a task
+
+Click **Create new task** (top right). Two fields drive the run, and their names are a little unintuitive — **fill both** (ARTEX requires it):
+
+| Field | What it actually wants | Example |
+| --- | --- | --- |
+| **Description** | The **target + background** — this is where the URL goes | `OWASP Juice Shop at http://juice-shop:3000, running locally in the workshop lab. Scope: this host only.` |
+| **Target** | The **goal**, *not* the URL | `Demonstrate a SQL-injection authentication bypass on the login endpoint (/rest/user/login) — log in without valid credentials.` |
+
+> Use the Compose hostname **`http://juice-shop:3000`** (not `localhost`) — ARTEX reaches Juice Shop over the Compose network. Keep the scope to Juice Shop only; the ARTEX license permits local targets only.
+
+Click **Create**, open the task, and it runs **autonomously** — by default it does *not* pause for per-step approval (that's optional: enable a human-in-the-loop gate under **Intercept rule** / **Approval Records**). Watch it on:
+
+- **Session** — live agent dialogue and running token counts
+- **Tool execution** — every command the agents run
+- **Discover** (and the Dashboard's Discover panel) — findings as they land
+
+**What success looks like:** within a few minutes ARTEX reports a **Severe** finding — *SQL injection* on `POST /rest/user/login` — with a PoC like `{"email":"' OR 1=1--","password":"anything"}` that returns the **admin JWT** (`role=admin`). On `claude-sonnet-4-6` the run is roughly **130–200k tokens (≈$0.40)**.
+
+> The "English-UI" build still shows some **Chinese text** in finding titles and evidence — cosmetic only; the findings themselves are correct.
 
 The MITM proxy is published on **127.0.0.1:8788** (localhost only) if you want to route traffic through it.
 
@@ -423,7 +442,7 @@ docker compose --profile artex stop artex artex-postgres
 
 ARTEX runs in a Codespace the same way the rest of the lab does, with a few caveats:
 
-- **Forward the port.** Open the **Ports** tab and use the forwarded URL for **8787**. The `/setup` and login flow works over the forwarded HTTPS URL.
+- **Forward the port.** Codespaces auto-forwards **8787** (and the 8788 proxy) as **Private** — open the **Ports** tab and click the forwarded **8787** URL. The localhost binding doesn't block this; the `/setup` and login flow works over the forwarded HTTPS URL, and "Private" keeps the (initially passwordless) dashboard off the public internet.
 - **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/8 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a small machine — stop one first — or use a larger (8-core/16 GB) Codespace.
 - **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a default (~32 GB) Codespace; `docker builder prune` reclaims build cache. Stop the Codespace when idle.
 
