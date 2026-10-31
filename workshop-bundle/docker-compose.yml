@@ -145,7 +145,7 @@ services:
   # does not start it. Launch it on demand with:
   #   docker compose --profile artex up -d artex
   # (that also starts its dedicated Postgres and waits for juice-shop).
-  # Upstream: https://github.com/lenaxia/artex  (image: autumn27/artex)
+  # Upstream: https://github.com/BillReyor/ARTEX  (built from source; no published image)
   artex-postgres:
     profiles: ["artex"]
     image: postgres:16-alpine

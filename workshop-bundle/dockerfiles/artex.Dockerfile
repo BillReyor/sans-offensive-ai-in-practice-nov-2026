@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# Workshop multi-stage build for ARTEX (https://github.com/lenaxia/artex).
+# Workshop multi-stage build for ARTEX (https://github.com/BillReyor/ARTEX).
 #
 # Upstream ships only a *runtime* Dockerfile that expects a pre-compiled binary
 # at dist/<arch>/artex (produced by their CI), and their compose pulls the

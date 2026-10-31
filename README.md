@@ -207,7 +207,7 @@ sans-offensive-ai-in-practice-nov-2026/
     │   ├── PentestGPT/                <-- git clone https://github.com/greydgl/pentestgpt (pinned b986930)
     │   │   ├── Dockerfile
     │   │   └── ...
-    │   └── artex/                     <-- (optional) git clone https://github.com/lenaxia/artex
+    │   └── artex/                     <-- (optional) git clone https://github.com/BillReyor/ARTEX
     │       ├── workshop.Dockerfile    <-- copied in by setup.sh (multi-stage build)
     │       └── ...
     │
@@ -381,7 +381,7 @@ ARTEX is an **AI autonomous pentester with a web dashboard and a human-in-the-lo
 
 It's **optional** and gated behind the `artex` Docker Compose profile, so `docker compose up -d` never starts it. It's **built from source** (`setup.sh` clones ARTEX, and `docker compose` builds a multi-stage image — upstream publishes no usable image) and uses its **own** PostgreSQL, isolated from Shannon's.
 
-> ⚠️ **License and scope — read before using.** ARTEX is licensed **AGPL-3.0 with additional author usage limits** that permit only **local, isolated testing and research** and **prohibit scanning or attacking any online system**. In this workshop that means: point ARTEX **only at the local Juice Shop container**, never at any real or internet-facing target. See the project's README: https://github.com/lenaxia/artex
+> ⚠️ **License and scope — read before using.** ARTEX is licensed **AGPL-3.0 with additional author usage limits** that permit only **local, isolated testing and research** and **prohibit scanning or attacking any online system**. In this workshop that means: point ARTEX **only at the local Juice Shop container**, never at any real or internet-facing target. See the project's README: https://github.com/BillReyor/ARTEX
 
 ### Start ARTEX
 
