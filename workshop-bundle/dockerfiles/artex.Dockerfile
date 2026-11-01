@@ -13,7 +13,7 @@
 # docker-compose.yml).
 
 # --- Stage 1: build the static frontend (Next.js `output: export` -> web/out) ---
-FROM node:20-bookworm AS web
+FROM node:22-bookworm AS web
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
@@ -31,16 +31,16 @@ COPY . .
 COPY --from=web /src/web/out ./server/webui/dist
 RUN CGO_ENABLED=0 go build -tags embedui -o /out/artex ./cmd/artex
 
-# --- Stage 3: runtime (mirrors upstream Dockerfile: recon tools + Node 20 + Playwright) ---
+# --- Stage 3: runtime (mirrors upstream Dockerfile: recon tools + Node 22 + Playwright) ---
 FROM python:3.12-slim-bookworm
 ARG TARGETARCH
 # Common tooling plus a set of recon staples (ripgrep / curl / nmap / etc.).
-# Node comes from NodeSource 20.x: bookworm's apt nodejs is 18, and Playwright
-# needs >= 20.
+# Node comes from NodeSource 22.x: ARTEX requires Node >= 22.12, and bookworm's
+# apt nodejs is 18.
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates ripgrep curl wget vim git jq unzip \
       dnsutils iputils-ping netcat-openbsd inetutils-telnet whois nmap \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 # Pre-install Playwright MCP + CLI globally and the chromium browser, so the
