@@ -16,8 +16,8 @@ PENTESTGPT_REF="b986930"
 # The Juice Shop source tag matches the bkimminich/juice-shop image tag in docker-compose.yml.
 SHANNON_REF="4bd88c1"
 JUICE_SHOP_REF="v20.3.0"
-# ARTEX (optional 4th tool) — english-ui branch; built from source.
-ARTEX_REF="f9642c1"
+# ARTEX (optional 4th tool) — BillReyor/ARTEX english-ui branch; built from source.
+ARTEX_REF="59373e358851db86597d1e8d399957a43eab6dd9"
 
 # Clone with LF line endings on every platform. Git for Windows defaults to
 # CRLF, which breaks the bash entrypoints that get copied into the images.
@@ -79,7 +79,7 @@ fi
 # Clone ARTEX (optional 4th tool) if not already cloned
 if [ ! -d "$TOOLS_DIR/artex" ]; then
     echo "Cloning ARTEX repository..."
-    "${GIT_CLONE[@]}" https://github.com/lenaxia/artex "$TOOLS_DIR/artex"
+    "${GIT_CLONE[@]}" https://github.com/BillReyor/ARTEX "$TOOLS_DIR/artex"
 else
     echo "✓ ARTEX repository already exists"
 fi

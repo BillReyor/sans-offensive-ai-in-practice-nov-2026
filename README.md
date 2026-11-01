@@ -207,7 +207,7 @@ sans-offensive-ai-in-practice-nov-2026/
     │   ├── PentestGPT/                <-- git clone https://github.com/greydgl/pentestgpt (pinned b986930)
     │   │   ├── Dockerfile
     │   │   └── ...
-    │   └── artex/                     <-- (optional) git clone https://github.com/lenaxia/artex
+    │   └── artex/                     <-- (optional) git clone https://github.com/BillReyor/ARTEX
     │       ├── workshop.Dockerfile    <-- copied in by setup.sh (multi-stage build)
     │       └── ...
     │
@@ -381,7 +381,7 @@ ARTEX is an **AI autonomous pentester with a web dashboard and a human-in-the-lo
 
 It's **optional** and gated behind the `artex` Docker Compose profile, so `docker compose up -d` never starts it. It's **built from source** (`setup.sh` clones ARTEX, and `docker compose` builds a multi-stage image — upstream publishes no usable image) and uses its **own** PostgreSQL, isolated from Shannon's.
 
-> ⚠️ **License and scope — read before using.** ARTEX is licensed **AGPL-3.0 with additional author usage limits** that permit only **local, isolated testing and research** and **prohibit scanning or attacking any online system**. In this workshop that means: point ARTEX **only at the local Juice Shop container**, never at any real or internet-facing target. See the project's README: https://github.com/lenaxia/artex
+> ⚠️ **Scope — read before using.** ARTEX is an autonomous pentester: only run it against systems you own or are explicitly authorized to test. In this workshop that means point ARTEX **only at the local Juice Shop container**, never at any real or internet-facing target. ARTEX is licensed under **AGPL-3.0**; see the project's README: https://github.com/BillReyor/ARTEX
 
 ### Start ARTEX
 
@@ -407,7 +407,7 @@ Click **Create new task** (top right). Two fields drive the run, and their names
 | **Description** | The **target + background** — this is where the URL goes | `OWASP Juice Shop at http://juice-shop:3000, running locally in the workshop lab. Scope: this host only.` |
 | **Target** | The **goal**, *not* the URL | `Demonstrate a SQL-injection authentication bypass on the login endpoint (/rest/user/login) — log in without valid credentials.` |
 
-> Use the Compose hostname **`http://juice-shop:3000`** (not `localhost`) — ARTEX reaches Juice Shop over the Compose network. Keep the scope to Juice Shop only; the ARTEX license permits local targets only.
+> Use the Compose hostname **`http://juice-shop:3000`** (not `localhost`) — ARTEX reaches Juice Shop over the Compose network. Keep the scope to the local Juice Shop only — the lab never targets any real or internet-facing system.
 
 Click **Create**, open the task, and it runs **autonomously** — by default it does *not* pause for per-step approval (that's optional: enable a human-in-the-loop gate under **Intercept rule** / **Approval Records**). Watch it on:
 
@@ -416,8 +416,6 @@ Click **Create**, open the task, and it runs **autonomously** — by default it 
 - **Discover** (and the Dashboard's Discover panel) — findings as they land
 
 **What success looks like:** within a few minutes ARTEX reports a **Severe** finding — *SQL injection* on `POST /rest/user/login` — with a PoC like `{"email":"' OR 1=1--","password":"anything"}` that returns the **admin JWT** (`role=admin`). On `claude-sonnet-4-6` the run is roughly **130–200k tokens (≈$0.40)**.
-
-> The "English-UI" build still shows some **Chinese text** in finding titles and evidence — cosmetic only; the findings themselves are correct.
 
 The MITM proxy is published on **127.0.0.1:8788** (localhost only) if you want to route traffic through it.
 
@@ -446,7 +444,7 @@ ARTEX runs in a Codespace the same way the rest of the lab does, with a few cave
 - **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/8 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a small machine — stop one first — or use a larger (8-core/16 GB) Codespace.
 - **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a default (~32 GB) Codespace; `docker builder prune` reclaims build cache. Stop the Codespace when idle.
 
-> **Reproducible builds.** `setup.sh` pins ARTEX to a specific upstream commit (`ARTEX_REF` in `setup.sh`), so every participant builds the same source. Bump that ref when you want a newer ARTEX.
+> **Reproducible builds.** `setup.sh` pins ARTEX to a specific commit (`ARTEX_REF` in `setup.sh`), so every participant builds the same source. Bump that ref when you want a newer ARTEX.
 
 ---
 
