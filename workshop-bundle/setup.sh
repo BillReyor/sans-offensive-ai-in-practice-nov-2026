@@ -17,7 +17,7 @@ PENTESTGPT_REF="b986930"
 SHANNON_REF="4bd88c1"
 JUICE_SHOP_REF="v20.3.0"
 # ARTEX (optional 4th tool) — BillReyor/ARTEX english-ui branch; built from source.
-ARTEX_REF="98399e0beae10370db2ba81635aa439b5f21b6d2"
+ARTEX_REF="59373e358851db86597d1e8d399957a43eab6dd9"
 
 # Clone with LF line endings on every platform. Git for Windows defaults to
 # CRLF, which breaks the bash entrypoints that get copied into the images.
