@@ -89,7 +89,7 @@ The easiest option on Windows is [Codespaces](#github-codespaces). To run locall
 If you can't install Docker on your laptop, run the whole lab in a Codespace. You only need a browser and a GitHub account.
 
 1. **Add your API key as a Codespaces secret** before you create the codespace: github.com → your profile → **Settings → Codespaces → Secrets → New secret**. Name it `ANTHROPIC_API_KEY`, paste your key, and give this repository access to it. Don't put the key in a file in the repository.
-2. **Create the codespace:** on the repository page, click **Code → Codespaces → Create codespace on main**. Choose a machine with at least **4 cores** if asked.
+2. **Create the codespace:** on the repository page, click **Code → Codespaces → Create codespace on main**. Choose a machine with at least **4 cores** if asked (4-core = 16 GB memory, 32 GB disk). Pick **8 cores** (32 GB memory, 64 GB disk) if you plan to run ARTEX a lot — it uses your free core-hours twice as fast.
 3. **Wait for setup.** The first start clones the tools and builds the Docker images, which takes several minutes. When it finishes, the lab services start automatically.
 4. **Verify:** in the codespace terminal, run `cd workshop-bundle && ./verify-setup.sh`.
 5. **Run the tools** with the commands below, from `workshop-bundle/` in the codespace terminal. Open the **Ports** tab to reach Juice Shop (3000) and the Temporal UI (8233) in your browser.
@@ -441,8 +441,8 @@ docker compose --profile artex stop artex artex-postgres
 ARTEX runs in a Codespace the same way the rest of the lab does, with a few caveats:
 
 - **Forward the port.** Codespaces auto-forwards **8787** (and the 8788 proxy) as **Private** — open the **Ports** tab and click the forwarded **8787** URL. The localhost binding doesn't block this; the `/setup` and login flow works over the forwarded HTTPS URL, and "Private" keeps the (initially passwordless) dashboard off the public internet.
-- **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/8 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a small machine — stop one first — or use a larger (8-core/16 GB) Codespace.
-- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a default (~32 GB) Codespace; `docker builder prune` reclaims build cache. Stop the Codespace when idle.
+- **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/16 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a 4-core machine — stop one first — or use a larger (8-core/32 GB) Codespace.
+- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a 4-core (32 GB) Codespace. Run `docker builder prune -af` after the ARTEX build to reclaim its build cache (codespace setup already does this for the other images), and check free space with `df -h /workspaces && docker system df`. Stop the Codespace when idle.
 
 > **Reproducible builds.** `setup.sh` pins ARTEX to a specific commit (`ARTEX_REF` in `setup.sh`), so every participant builds the same source. Bump that ref when you want a newer ARTEX.
 
