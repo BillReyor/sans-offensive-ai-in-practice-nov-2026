@@ -109,6 +109,26 @@ else
 fi
 echo ""
 
+# Check free disk. ZAP, ARTEX and scan output still need room after setup,
+# and a 4-core Codespace only has 32 GB.
+echo "Checking free disk space..."
+FREE_GB=$(df -Pk "$SCRIPT_DIR" | awk 'NR==2 {print int($4 / 1048576)}')
+if [ "$FREE_GB" -lt 8 ]; then
+    echo "⚠ Only ${FREE_GB} GB free — ZAP, ARTEX and scans may run out of space"
+    echo "  Free build cache with: docker builder prune -af"
+    WARNINGS=$((WARNINGS + 1))
+else
+    echo "✓ ${FREE_GB} GB free"
+fi
+if docker info >/dev/null 2>&1; then
+    CACHE=$(docker system df --format '{{.Type}}\t{{.Size}}' 2>/dev/null | awk -F'\t' '$1=="Build Cache" {print $2}')
+    case "$CACHE" in
+        ""|0B|*kB|*KB) ;;
+        *) echo "  Docker build cache is using $CACHE; 'docker builder prune -af' frees it" ;;
+    esac
+fi
+echo ""
+
 # Check Shannon configuration
 echo "Checking Shannon configuration..."
 check_file "$TOOLS_DIR/shannon/configs/juice-shop.yaml" "Shannon juice-shop.yaml config"

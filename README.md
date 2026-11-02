@@ -388,10 +388,10 @@ It's **optional** and gated behind the `artex` Docker Compose profile, so `docke
 From `workshop-bundle/` (services from setup should already be running):
 
 ```bash
-docker compose --profile artex up -d artex
+docker compose --profile artex up -d artex && docker builder prune -af
 ```
 
-That starts ARTEX plus its dedicated Postgres and waits for Juice Shop to be healthy. **The first launch builds the image from source** (Next.js export → Go compile → Playwright/Chromium), which takes several minutes.
+That starts ARTEX plus its dedicated Postgres and waits for Juice Shop to be healthy. **The first launch builds the image from source** (Next.js export → Go compile → Playwright/Chromium), which takes several minutes. The `docker builder prune -af` then deletes the build cache that leaves behind (several GB), keeping the image; on later launches there's nothing to build, so it's a no-op.
 
 ### First-run setup
 
@@ -442,7 +442,7 @@ ARTEX runs in a Codespace the same way the rest of the lab does, with a few cave
 
 - **Forward the port.** Codespaces auto-forwards **8787** (and the 8788 proxy) as **Private** — open the **Ports** tab and click the forwarded **8787** URL. The localhost binding doesn't block this; the `/setup` and login flow works over the forwarded HTTPS URL, and "Private" keeps the (initially passwordless) dashboard off the public internet.
 - **Resources.** ARTEX plus its Postgres on top of the rest of the stack can exhaust a 4-core/16 GB Codespace. **Don't run ARTEX and a Shannon scan at the same time** on a 4-core machine — stop one first — or use a larger (8-core/32 GB) Codespace.
-- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a 4-core (32 GB) Codespace. Run `docker builder prune -af` after the ARTEX build to reclaim its build cache (codespace setup already does this for the other images), and check free space with `df -h /workspaces && docker system df`. Stop the Codespace when idle.
+- **Core-hours and disk.** ARTEX is interactive and long-lived, so it burns Codespaces core-hours faster. Its first run builds from source on the Codespace's amd64 architecture (image ≈2.4 GB plus build cache) — expect a multi-minute build and watch disk on a 4-core (32 GB) Codespace. The [Start ARTEX](#start-artex) command already prunes the build cache, and `./verify-setup.sh` warns when disk is low; check it yourself with `df -h /workspaces && docker system df`. Stop the Codespace when idle.
 
 > **Reproducible builds.** `setup.sh` pins ARTEX to a specific commit (`ARTEX_REF` in `setup.sh`), so every participant builds the same source. Bump that ref when you want a newer ARTEX.
 
